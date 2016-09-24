@@ -1,9 +1,9 @@
 var builder = require("botbuilder"),
-	connector = new builder.ConsoleConnector().listen(),
-	bot = new builder.UniversalBot(connector),
-	intents = new builder.IntentDialog();
+	restify = require("restify");
 
 /*
+	Notes:
+
 	data can be persisted in many ways:
 	- session.userData: global info for the user across all conversations
 	- session.conversationData: global info for a single conversation, visible to everyone in conversation (disabled by default)
@@ -13,6 +13,30 @@ var builder = require("botbuilder"),
 	do NOT store data using global vars or function closures!
 */
 
+/**
+ * Bot Setup
+ */
+
+// restify server
+var server = restify.createServer();
+server.listen(process.env.port || process.env.PORT || 3978, function () {
+	console.log("%s listening to %s", server.name, server.url);
+});
+
+// create chat bot
+var connector = new builder.ChatConnector({
+		appId: process.env.MICROSOFT_APP_ID,
+		appPassword: process.env.MICROSOFT_APP_PASSWORD
+	}),
+	bot = new builder.UniversalBot(connector);
+
+server.post("/api/messages", connector.listen());
+
+/**
+ * Bots Dialogs
+ */
+
+var intents = new builder.IntentDialog();
 bot.dialog("/", intents);
 
 intents.matches(/^change name/i, [
