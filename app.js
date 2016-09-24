@@ -44,13 +44,13 @@ intents.matches(/^change name/i, [
 		session.beginDialog("/profile");
 	},
 	function (session, results) {
-		session.send("Ok... Changed your name to %s", session.userData.name);
+		session.send("Ok... Changed your name to %s", session.privateConversationData.name);
 	}
 ]);
 
 intents.onDefault([
 	function (session, args, next) {
-		if (!session.userData.name) {
+		if (!session.privateConversationData.name) {
 			session.beginDialog("/profile");
 		} else {
 			next();
@@ -58,7 +58,7 @@ intents.onDefault([
 	},
 
 	function (session, results) {
-		session.send("Hello %s!", session.userData.name);
+		session.send("Hello %s!", session.privateConversationData.name);
 	}
 ]);
 
@@ -68,7 +68,7 @@ bot.dialog("/profile", [
 	},
 
 	function (session, results) {
-		session.userData.name = results.response;
+		session.privateConversationData.name = results.response;
 		session.endDialog();
 	}
 ]);
