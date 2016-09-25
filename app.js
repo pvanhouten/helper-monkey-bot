@@ -68,7 +68,15 @@ bot.dialog("/profile", [
 	},
 
 	function (session, results) {
-		session.privateConversationData.name = results.response;
-		session.endDialog();
+		if (results.response.match(/login/gi)) {
+			session.send(new builder.Message(session).addAttachment(
+				new builder.SigninCard(session)
+					.text("Authentication Card")
+					.button("Sign-In", "http://www.google.com/"))
+			);
+		} else {
+			session.privateConversationData.name = results.response;
+			session.endDialog();
+		}
 	}
 ]);
