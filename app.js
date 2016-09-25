@@ -1,5 +1,15 @@
 var builder = require("botbuilder"),
-	restify = require("restify");
+	restify = require("restify"),
+	google  = require("googleapis"),
+	oAuth2  = google.auth.OAuth2,
+	scopes  = [
+		"https://www.googleapis.com/auth/contacts.readonly",
+		"https://www.googleapis.com/auth/userinfo.profile"
+	],
+
+	getOAuthClient = function () {
+		return new oAuth2(process.env.OAUTH2_CLIENT_ID, process.env.OAUTH2_CLIENT_SECRET, process.env.OAUTH2_REDIRECT_URL);
+	};
 
 /*
 	Notes:
@@ -19,6 +29,7 @@ var builder = require("botbuilder"),
 
 // restify server
 var server = restify.createServer();
+server.use(restify.queryParser());
 server.listen(process.env.port || process.env.PORT || 3978, function () {
 	console.log("%s listening to %s", server.name, server.url);
 });
@@ -31,6 +42,20 @@ var connector = new builder.ChatConnector({
 	bot = new builder.UniversalBot(connector);
 
 server.post("/api/messages", connector.listen());
+
+server.get("/api/oauthcallback", function (req, res, next) {
+	console.log("OAUTH CALLBACK");
+	var authCode = req.query.code,
+		address = JSON.parse(req.query.state),
+		oauth = getOAuthClient();
+
+	oauth.getToken(authCode, function (err, tokens) {
+		if (!err) {
+			bot.beginDialog(address, "/oauth-success", tokens);
+		}
+		res.send(200, {});
+	});
+});
 
 /**
  * Bots Dialogs
@@ -69,10 +94,14 @@ bot.dialog("/profile", [
 
 	function (session, results) {
 		if (results.response.match(/login/gi)) {
+			var oauth = getOAuthClient(),
+				url = oauth.generateAuthUrl({ access_type: "online", scope: scopes }) +
+					"&state=" + encodeURIComponent(JSON.stringify(session.message.address));;
+
 			session.send(new builder.Message(session).addAttachment(
 				new builder.SigninCard(session)
-					.text("Authentication Card")
-					.button("Sign-In", "http://www.google.com/"))
+					.text("Authenticate with Google")
+					.button("Sign-In", url))
 			);
 		} else {
 			session.privateConversationData.name = results.response;
@@ -80,3 +109,25 @@ bot.dialog("/profile", [
 		}
 	}
 ]);
+
+bot.dialog("/oauth-success", function (session, tokens) {
+	var people = google.people("v1"),
+		oauth = getOAuthClient();
+
+	session.privateConversationData.tokens = tokens;
+	session.send("oAuth Success!");
+	oauth.setCredentials(tokens);
+
+	people.people.get({ resourceName: "people/me", auth: oauth }, function (err, response) {
+		if (!err) {
+			if (response.names && response.names.length > 0) {
+				var name = response.names[0].givenName || response.names[0].displayName;
+				session.privateConversationData.name = name;
+				session.send("Nice to meet you, %s!", name);
+			}
+		} else {
+			session.send("There was an error retrieving your profile.");
+		}
+		session.endDialog();
+	});
+});

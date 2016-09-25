@@ -45,3 +45,4 @@ jspm_packages
 
 # files for local testing
 go.bat
+env.bat
