@@ -96,7 +96,7 @@ bot.dialog("/profile", [
 		if (results.response.match(/login/gi)) {
 			var oauth = getOAuthClient(),
 				url = oauth.generateAuthUrl({ access_type: "online", scope: scopes }) +
-					"&state=" + encodeURIComponent(JSON.stringify(session.message.address));;
+					"&state=" + encodeURIComponent(JSON.stringify(session.message.address));
 
 			session.send(new builder.Message(session).addAttachment(
 				new builder.SigninCard(session)
